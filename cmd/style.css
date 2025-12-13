@@ -77,3 +77,21 @@ a {
 a:hover {
     text-decoration: underline;
 }
+
+/* Cover page styles */
+.cover-page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+    text-align: center;
+    padding: 2em;
+}
+
+.cover-title {
+    font-size: 2.5em;
+    font-weight: bold;
+    margin: 0;
+    line-height: 1.2;
+}

@@ -170,6 +170,13 @@ func createEpub(title, htmlContent string) error {
 		return fmt.Errorf("failed to add CSS: %w", err)
 	}
 
+	// Add cover page as the first section
+	coverHTML := generateCoverPage(title)
+	_, err = e.AddSection(coverHTML, "Cover", "cover.xhtml", cssPath)
+	if err != nil {
+		return fmt.Errorf("failed to add cover page: %w", err)
+	}
+
 	// Add the content as a section
 	_, err = e.AddSection(htmlContent, title, "", cssPath)
 	if err != nil {
@@ -182,4 +189,11 @@ func createEpub(title, htmlContent string) error {
 	}
 
 	return nil
+}
+
+// generateCoverPage creates an HTML cover page with the book title
+func generateCoverPage(title string) string {
+	return fmt.Sprintf(`<div class="cover-page">
+	<h1 class="cover-title">%s</h1>
+</div>`, title)
 }
