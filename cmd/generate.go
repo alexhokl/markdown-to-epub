@@ -26,6 +26,7 @@ type generateOptions struct {
 	epubFilename     string
 	overwrite        bool
 	title            string
+	author           string
 	language         string
 }
 
@@ -46,6 +47,7 @@ func init() {
 	flags.StringVarP(&generateOps.epubFilename, "output", "o", "", "Path to output epub file")
 	flags.BoolVarP(&generateOps.overwrite, "overwrite", "f", false, "Overwrite existing epub file")
 	flags.StringVarP(&generateOps.title, "title", "t", "", "Title of the book (defaults to filename)")
+	flags.StringVarP(&generateOps.author, "author", "a", "", "Author of the book")
 	flags.StringVarP(&generateOps.language, "language", "l", "en", "Language code (e.g., en, ja, zh)")
 
 	if err := generateCmd.MarkFlagRequired("input"); err != nil {
@@ -145,6 +147,9 @@ func createEpub(title, htmlContent string) error {
 
 	// Set metadata
 	e.SetLang(generateOps.language)
+	if generateOps.author != "" {
+		e.SetAuthor(generateOps.author)
+	}
 
 	var cssPath string
 
