@@ -4,8 +4,10 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexhokl/helper/cli"
@@ -13,10 +15,27 @@ import (
 	"github.com/go-shiori/go-epub"
 	"github.com/spf13/cobra"
 	"github.com/yuin/goldmark"
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 )
+
+const epubUserAgent = "markdown-to-epub/1.0"
+
+// userAgentTransport wraps an http.RoundTripper and injects a User-Agent
+// header on every request so that servers that block the default Go client
+// user-agent (e.g. Wikimedia) still serve image content.
+type userAgentTransport struct {
+	userAgent string
+	base      http.RoundTripper
+}
+
+func (t *userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	r := req.Clone(req.Context())
+	r.Header.Set("User-Agent", t.userAgent)
+	return t.base.RoundTrip(r)
+}
 
 //go:embed style.css
 var defaultCSS string
@@ -86,6 +105,10 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Resolve local image paths relative to the markdown file's directory
+	markdownDir := filepath.Dir(generateOps.markdownFilename)
+	htmlContent = resolveLocalImageSrcs(htmlContent, markdownDir)
+
 	// Create ePub
 	if err := createEpub(title, htmlContent); err != nil {
 		return fmt.Errorf("failed to create epub: %w", err)
@@ -109,7 +132,12 @@ func validateGenerateOptions(options generateOptions) error {
 
 func convertMarkdownToHTML(content []byte) (string, error) {
 	md := goldmark.New(
-		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithExtensions(
+			extension.GFM,
+			highlighting.NewHighlighting(
+				highlighting.WithStyle("github"),
+			),
+		),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 		),
@@ -125,6 +153,25 @@ func convertMarkdownToHTML(content []byte) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// resolveLocalImageSrcs rewrites relative img src attributes to absolute file
+// paths so that go-epub's EmbedImages can locate them on disk.
+func resolveLocalImageSrcs(htmlContent, markdownDir string) string {
+	re := regexp.MustCompile(`(<img\b[^>]*\bsrc=")([^"]+)(")`)
+	return re.ReplaceAllStringFunc(htmlContent, func(match string) string {
+		parts := re.FindStringSubmatch(match)
+		if parts == nil {
+			return match
+		}
+		src := parts[2]
+		// Leave URLs and absolute paths untouched
+		if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") || filepath.IsAbs(src) {
+			return match
+		}
+		abs := filepath.Join(markdownDir, src)
+		return parts[1] + abs + parts[3]
+	})
 }
 
 func extractTitleFromMarkdown(content string) string {
@@ -143,6 +190,15 @@ func createEpub(title, htmlContent string) error {
 	e, err := epub.NewEpub(title)
 	if err != nil {
 		return fmt.Errorf("failed to create epub: %w", err)
+	}
+
+	// Use a custom HTTP client that sends a descriptive User-Agent so that
+	// servers like Wikimedia do not reject HEAD/GET requests for images.
+	e.Client = &http.Client{
+		Transport: &userAgentTransport{
+			userAgent: epubUserAgent,
+			base:      http.DefaultTransport,
+		},
 	}
 
 	// Set metadata
@@ -187,6 +243,9 @@ func createEpub(title, htmlContent string) error {
 	if err != nil {
 		return fmt.Errorf("failed to add section: %w", err)
 	}
+
+	// Download and embed all images referenced in the content
+	e.EmbedImages()
 
 	// Write the ePub file
 	if err := e.Write(generateOps.epubFilename); err != nil {

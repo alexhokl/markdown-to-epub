@@ -41,6 +41,23 @@ pre code {
     padding: 0;
 }
 
+/* Chroma syntax-highlighting wrapper */
+.chroma {
+    background-color: #f6f8fa;
+    padding: 1em;
+    overflow-x: auto;
+    border-radius: 5px;
+    font-family: "Source Code Pro", "Noto Sans Mono CJK JP", monospace;
+    font-size: 0.88em;
+    line-height: 1.5;
+}
+
+.chroma code {
+    background-color: transparent;
+    padding: 0;
+    font-size: inherit;
+}
+
 blockquote {
     border-left: 3px solid #ccc;
     margin-left: 0;
