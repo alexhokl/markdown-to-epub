@@ -24,3 +24,9 @@ rendering. When generating Japanese content, use the `-l ja` flag:
 ```bash
 markdown-to-epub generate -i japanese.md -o output.epub -l ja
 ```
+
+## Agent skill
+
+[`skills/markdown-to-epub/`](skills/markdown-to-epub) is an Agent Skill that
+teaches a coding agent to drive the `markdown-to-epub` CLI. Install it into
+`~/.agents/skills` and `~/.claude/skills` with `task install-skill`.

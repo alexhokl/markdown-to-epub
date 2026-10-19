@@ -55,3 +55,10 @@ tasks:
   completion-linux:
     desc: Generate bash completion and save configuration directory
     cmd: $APP_NAME completion bash | sudo tee /etc/bash_completion.d/$APP_NAME
+
+  install-skill:
+    desc: Install the skill to the local system
+    cmds:
+      - mkdir -p ~/.agents/skills ~/.claude/skills
+      - ln -snf "{{.TASKFILE_DIR}}/skills/markdown-to-epub" ~/.agents/skills/markdown-to-epub
+      - ln -snf "{{.TASKFILE_DIR}}/skills/markdown-to-epub" ~/.claude/skills/markdown-to-epub
